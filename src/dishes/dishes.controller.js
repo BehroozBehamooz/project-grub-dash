@@ -26,59 +26,80 @@ function dishExists(req, res, next) {
 function read(req, res) {
   res.json({ data: res.locals.dish });
 }
-function bodyHasRightFields(req, res, next) {
-  const validFields = ["name", "description", "price", "image_url"];
-  const { data } = req.body;
-  if( typeof data["price"] !=='number'){
+
+function hasValidProperties(req,res,next){
+  const validProperties = ["name", "description", "price", "image_url", "id"];
+  const { data }=req.body;
+  const invalidFields=Object.keys(data).filter(field=>!validProperties.includes(field));
+  if (invalidFields.length>0){
+    return next({
+      status:400,
+      message: `Invalid field(s) : ${invalidFields.join(", ")}`,
+    });
+  }
+  next();
+}
+function hasRequiredProperties(req,res,next){
+  const requiredProperties = ["name", "description", "price", "image_url"];
+  const { data }=req.body;
+  requiredProperties.forEach((property)=>{
+    if (!data[property]){
+      return next({
+        status:400,
+        message: `Dish must include a ${property}. it is required`,
+      });    }
+  });
+  next();
+}
+function hasValidValues(req,res,next){
+  const { name, description, price, image_url }=req.body.data;
+  if (name.trim()===""){
+    return next({
+      status:400,
+      message: `Dish must include a name which is not empty`,
+    });
+  }
+  if (description.trim()===""){
+    return next({
+      status:400,
+      message: `Dish must include a description which is not empty`,
+    });
+  }
+  if (image_url.trim()===""){
+    return next({
+      status:400,
+      message: `Dish must include a image_url which is not empty`,
+    });
+  }
+  if (typeof(price)!=="number" || price<=0){
     return next({
       status: 400,
-      message: `Dish price must be a number}`,
+      message: `Dish must have a price that is an integer greater than 0`,
     });
   }
   
-  validFields.forEach((item)=>{
-      if (data[item]===undefined || data[item] === "" || data[item]<=0){
-        return next({
-            status: 400,
-            message: `Dish must include a ${item}`,
-          });
-      }
-  });
-  
   next();
 }
+
 function create(req, res) {
-    
-    const {data}=req.body;
+    const { data }=req.body;
     data["id"]=nextId();
     dishes.push(data);
     res.status(201).json({data});
 }
 
-function extraValidation(req,res,next){
+function bodyIdMachesUrlId(req,res,next){
   const { data:{id} }= req.body;
   const { dishId }= req.params;
+  
+  //if the body includes id field then it checkes if it maches the dishId obtaind from url
   if (id && id!==dishId ){
-      next({
+      return next({
           status:400,
           message:`Dish id does not match route id. Dish: ${id}, Route: ${dishId}`
       });
   }
-  // else if (!status || status==="" || !validStatus.includes(status)){
-  //     next({
-  //         status:400,
-  //         message:"Order must have a status of pending, preparing, out-for-delivery, delivered"
-  //     });
-  // }else if(status==="delivered"){
-  //     next({
-  //         status:400,
-  //         message:"A delivered order cannot be changed"
-  //     });
-  // }
-  
-  else{
-      next();
-  }
+  next();
 }
 
 function update(req,res){
@@ -103,15 +124,18 @@ function destroy(req,res,next){
       message:"delete is not completed"
     });
   }
-
-
   res.sendStatus(405);
 }
 
 module.exports = {
-  create:[bodyHasRightFields, create],  
+  create:[hasValidProperties, hasRequiredProperties, hasValidValues, create],  
   read: [dishExists, read],
-  update:[dishExists, bodyHasRightFields, extraValidation, update],
+  update:[dishExists, hasValidProperties,hasRequiredProperties, hasValidValues, bodyIdMachesUrlId, update],
   delete:[ destroy],
   list,
+  dishExists,
+  bodyIdMachesUrlId,
+  hasValidProperties,
+  hasRequiredProperties,
+  hasValidValues,
 };

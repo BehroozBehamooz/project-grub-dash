@@ -13,37 +13,52 @@ function list(req, res) {
   res.json({ data: orders });
 }
 
+function hasValidProperties(req,res,next){
+    const validProperties = ["name", "description", "price", "image_url"];
+    const { data }=req.body;
+    const invalidFields=Object.keys(data).filter(field=>!validProperties.includes(field));
+    if (!invalidFields.length){
+      return next({
+        status:400,
+        message: `Dish must include a ${item}`,
+      });
+    }
+    next();
+  }
+
 function bodyHasValidFields(req, res, next) {
   const validFields = ["deliverTo", "mobileNumber"];
   const { data } = req.body;
   let message = "";
-
-  validFields.forEach((item) => {
-    if (data[item] === undefined || data[item] === "") {
-      message = `Order must include a ${item}`;
+  validFields.forEach((field) => {
+    if (data[field] === undefined || data[field] === "") {
+        return next({
+            status: 400,
+            message: `Order must include a ${field}`,
+        });
     }
   });
-  
+
   if (!Array.isArray(data["dishes"]) || data["dishes"].length === 0) {
-    message = `Order must include at least one dish`;
-  }else{
-      data["dishes"].forEach((dish,index)=>{
+    return next({
+        status:400,
+        message : `Order must include at least one dish`,
+    });
+  }
+  
+  data["dishes"].forEach((dish,index)=>{
         if (dish["quantity"]===undefined 
         || typeof dish["quantity"]!=="number"
         || dish["quantity"]<=0 ){
-            message=`Dish ${index} must have a quantity that is an integer greater than 0`;
+            return next({
+                status:400,
+                message:`Dish ${index} must have a quantity that is an integer greater than 0`,
+            });
         }
       });
-  }
-  if (message === "") {
     next();
-  } else {
-    next({
-      status: 400,
-      message,
-    });
-  }
 }
+
 function create(req,res){
     //const { data:{deliverTo,mobileNumber,quantity,dishes} } = req.body;
     const {data}=req.body;
@@ -68,28 +83,31 @@ function read(req,res){
     res.json({data:foundOrder});
 }
 
-function extraValidation(req,res,next){
+function hasValidValues(req,res,next){
     const validStatus=["pending", "preparing", "out-for-delivery", "delivered"];
     const { data:{id,status} }= req.body;
     const { orderId }= req.params;
+    
     if (id && id!==orderId ){
-        next({
+        return next({
             status:400,
             message:`Order id does not match route id. Order: ${id}, Route: ${orderId}`
         });
-    }else if (!status || status==="" || !validStatus.includes(status)){
-        next({
+    } 
+    if (!status || status==="" || !validStatus.includes(status)){
+        return next({
             status:400,
             message:"Order must have a status of pending, preparing, out-for-delivery, delivered"
         });
-    }else if(status==="delivered"){
-        next({
+    }
+    if(status==="delivered"){
+        return next({
             status:400,
             message:"A delivered order cannot be changed"
         });
-    }else{
-        next();
     }
+
+    next();
 }
 
 function update(req,res){
@@ -124,7 +142,7 @@ function logMe(req,res,next){
 module.exports = {
     create:[bodyHasValidFields, create],
     read:[orderExists, read],
-    update:[ orderExists, bodyHasValidFields, extraValidation , update],
+    update:[ orderExists, bodyHasValidFields, hasValidValues , update],
     delete:[orderExists , destroy],
     list,
-};
+}
