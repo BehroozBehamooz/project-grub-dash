@@ -1,30 +1,20 @@
 const path = require("path");
 const notFound = require("../errors/notFound");
-
 // Use the existing order data
 const orders = require(path.resolve("src/data/orders-data"));
-
 // Use this function to assigh ID's when necessary
 const nextId = require("../utils/nextId");
-
 // TODO: Implement the /orders handlers needed to make the tests pass
+
+const { hasValidProperties, hasRequiredProperties }=require("../errors/validations");
+const validProperties=["deliverTo", "mobileNumber", "dishes"];
+const requiredProperties = ["deliverTo", "mobileNumber", "dishes"];
 
 function list(req, res) {
   res.json({ data: orders });
 }
 
-function hasValidProperties(req,res,next){
-    const validProperties = ["name", "description", "price", "image_url"];
-    const { data }=req.body;
-    const invalidFields=Object.keys(data).filter(field=>!validProperties.includes(field));
-    if (!invalidFields.length){
-      return next({
-        status:400,
-        message: `Dish must include a ${item}`,
-      });
-    }
-    next();
-  }
+
 
 function bodyHasValidFields(req, res, next) {
   const validFields = ["deliverTo", "mobileNumber"];

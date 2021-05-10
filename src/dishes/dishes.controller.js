@@ -1,6 +1,10 @@
 const path = require("path");
 const notFound = require("../errors/notFound");
 
+const { hasValidProperties, hasRequiredProperties }=require("../errors/validations");
+const validProperties=["name", "description", "price", "image_url", "id"];
+const requiredProperties = ["name", "description", "price", "image_url"];
+
 // Use the existing dishes data
 const dishes = require(path.resolve("src/data/dishes-data"));
 
@@ -27,30 +31,31 @@ function read(req, res) {
   res.json({ data: res.locals.dish });
 }
 
-function hasValidProperties(req,res,next){
-  const validProperties = ["name", "description", "price", "image_url", "id"];
-  const { data }=req.body;
-  const invalidFields=Object.keys(data).filter(field=>!validProperties.includes(field));
-  if (invalidFields.length>0){
-    return next({
-      status:400,
-      message: `Invalid field(s) : ${invalidFields.join(", ")}`,
-    });
-  }
-  next();
-}
-function hasRequiredProperties(req,res,next){
-  const requiredProperties = ["name", "description", "price", "image_url"];
-  const { data }=req.body;
-  requiredProperties.forEach((property)=>{
-    if (!data[property]){
-      return next({
-        status:400,
-        message: `Dish must include a ${property}. it is required`,
-      });    }
-  });
-  next();
-}
+// function hasValidProperties(req,res,next){
+//   const validProperties = ["name", "description", "price", "image_url", "id"];
+//   const { data }=req.body;
+//   const invalidFields=Object.keys(data).filter(field=>!validProperties.includes(field));
+//   if (invalidFields.length>0){
+//     return next({
+//       status:400,
+//       message: `Invalid field(s) : ${invalidFields.join(", ")}`,
+//     });
+//   }
+//   next();
+// }
+
+// function hasRequiredProperties(req,res,next){
+//   const requiredProperties = ["name", "description", "price", "image_url"];
+//   const { data }=req.body;
+//   requiredProperties.forEach((property)=>{
+//     if (!data[property]){
+//       return next({
+//         status:400,
+//         message: `Dish must include a ${property}. it is required`,
+//       });    }
+//   });
+//   next();
+// }
 function hasValidValues(req,res,next){
   const { name, description, price, image_url }=req.body.data;
   if (name.trim()===""){
@@ -128,9 +133,16 @@ function destroy(req,res,next){
 }
 
 module.exports = {
-  create:[hasValidProperties, hasRequiredProperties, hasValidValues, create],  
+  create:[
+    hasValidProperties(validProperties), 
+    hasRequiredProperties(requiredProperties),
+    hasValidValues, create],  
   read: [dishExists, read],
-  update:[dishExists, hasValidProperties,hasRequiredProperties, hasValidValues, bodyIdMachesUrlId, update],
+  update:[
+    dishExists, 
+    hasValidProperties(validProperties),
+    hasRequiredProperties(requiredProperties), 
+    hasValidValues, bodyIdMachesUrlId, update],
   delete:[ destroy],
   list,
   dishExists,
