@@ -1,9 +1,15 @@
+//Importing standard validation functions
+const { hasValidProperties, hasRequiredProperties }=require("../errors/validations");
+
+//checks for extra fields and raises an error along with the list of extra fields
+const bodyHasValidProperties=hasValidProperties(["name", "description", "price", "image_url", "id"]);
+
+//making sure all required fields are included in the body
+const bodyHasRequiredProperties = hasRequiredProperties(["name", "description", "price", "image_url"]);
+
+
 const path = require("path");
 const notFound = require("../errors/notFound");
-
-const { hasValidProperties, hasRequiredProperties }=require("../errors/validations");
-const validProperties=["name", "description", "price", "image_url", "id"];
-const requiredProperties = ["name", "description", "price", "image_url"];
 
 // Use the existing dishes data
 const dishes = require(path.resolve("src/data/dishes-data"));
@@ -133,21 +139,12 @@ function destroy(req,res,next){
 }
 
 module.exports = {
-  create:[
-    hasValidProperties(validProperties), 
-    hasRequiredProperties(requiredProperties),
-    hasValidValues, create],  
+  create:[bodyHasValidProperties, bodyHasRequiredProperties, hasValidValues, create],  
   read: [dishExists, read],
-  update:[
-    dishExists, 
-    hasValidProperties(validProperties),
-    hasRequiredProperties(requiredProperties), 
-    hasValidValues, bodyIdMachesUrlId, update],
+  update:[dishExists, bodyHasValidProperties, bodyHasRequiredProperties, hasValidValues, bodyIdMachesUrlId, update],
   delete:[ destroy],
   list,
   dishExists,
   bodyIdMachesUrlId,
-  hasValidProperties,
-  hasRequiredProperties,
   hasValidValues,
 };

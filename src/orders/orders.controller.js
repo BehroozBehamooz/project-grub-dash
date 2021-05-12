@@ -1,3 +1,13 @@
+//Importing standard validation functions
+const { hasValidProperties, hasRequiredProperties }=require("../errors/validations");
+
+//checks for extra fields and raises an error if there is any and shows the list of extra fields
+const bodyHasValidProperties=hasValidProperties(["id", "deliverTo", "mobileNumber", "status", "dishes"]);
+
+//making sure all required fields are included in the body
+const bodyHasRequiredProperties = hasRequiredProperties(["deliverTo", "mobileNumber", "dishes"]);
+
+
 const path = require("path");
 const notFound = require("../errors/notFound");
 // Use the existing order data
@@ -6,40 +16,26 @@ const orders = require(path.resolve("src/data/orders-data"));
 const nextId = require("../utils/nextId");
 // TODO: Implement the /orders handlers needed to make the tests pass
 
-const { hasValidProperties, hasRequiredProperties }=require("../errors/validations");
-const validProperties=["deliverTo", "mobileNumber", "dishes"];
-const requiredProperties = ["deliverTo", "mobileNumber", "dishes"];
-
 function list(req, res) {
   res.json({ data: orders });
 }
 
 
-
-function bodyHasValidFields(req, res, next) {
-  const validFields = ["deliverTo", "mobileNumber"];
-  const { data } = req.body;
-  let message = "";
-  validFields.forEach((field) => {
-    if (data[field] === undefined || data[field] === "") {
-        return next({
-            status: 400,
-            message: `Order must include a ${field}`,
-        });
-    }
-  });
-
-  if (!Array.isArray(data["dishes"]) || data["dishes"].length === 0) {
+function hasValidDishes(req, res, next) {
+  const { dishes } = req.body.data;
+  //checking for type of dishes field
+  if (!Array.isArray(dishes) || dishes.length===0  ) {
     return next({
         status:400,
         message : `Order must include at least one dish`,
     });
   }
-  
-  data["dishes"].forEach((dish,index)=>{
-        if (dish["quantity"]===undefined 
-        || typeof dish["quantity"]!=="number"
-        || dish["quantity"]<=0 ){
+  //dishs.quantity should not be missing or none-numeric or zero or negetive
+  dishes.forEach((dish,index)=>{
+        if (
+            dish["quantity"]===undefined 
+            || typeof dish["quantity"]!=="number"
+            || dish["quantity"]<=0 ){
             return next({
                 status:400,
                 message:`Dish ${index} must have a quantity that is an integer greater than 0`,
@@ -48,6 +44,7 @@ function bodyHasValidFields(req, res, next) {
       });
     next();
 }
+
 
 function create(req,res){
     //const { data:{deliverTo,mobileNumber,quantity,dishes} } = req.body;
@@ -73,17 +70,9 @@ function read(req,res){
     res.json({data:foundOrder});
 }
 
-function hasValidValues(req,res,next){
+function hasValidStatus(req,res,next){
     const validStatus=["pending", "preparing", "out-for-delivery", "delivered"];
     const { data:{id,status} }= req.body;
-    const { orderId }= req.params;
-    
-    if (id && id!==orderId ){
-        return next({
-            status:400,
-            message:`Order id does not match route id. Order: ${id}, Route: ${orderId}`
-        });
-    } 
     if (!status || status==="" || !validStatus.includes(status)){
         return next({
             status:400,
@@ -96,7 +85,19 @@ function hasValidValues(req,res,next){
             message:"A delivered order cannot be changed"
         });
     }
+    next();
+}
 
+function hasValidValues(req,res,next){
+    const { data:{id,status} }= req.body;
+    const { orderId }= req.params;
+    
+    if (id && id!==orderId ){
+        return next({
+            status:400,
+            message:`Order id does not match route id. Order: ${id}, Route: ${orderId}`
+        });
+    } 
     next();
 }
 
@@ -130,9 +131,10 @@ function logMe(req,res,next){
 }
 
 module.exports = {
-    create:[bodyHasValidFields, create],
+    create:[bodyHasValidProperties, bodyHasRequiredProperties, hasValidDishes, create],
     read:[orderExists, read],
-    update:[ orderExists, bodyHasValidFields, hasValidValues , update],
+    update:[ orderExists, bodyHasValidProperties, bodyHasRequiredProperties, hasValidStatus, hasValidDishes, hasValidValues , update],
     delete:[orderExists , destroy],
     list,
+    orderExists,
 }
