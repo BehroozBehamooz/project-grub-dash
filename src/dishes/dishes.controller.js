@@ -1,11 +1,13 @@
-//Importing standard validation functions
-const { hasValidProperties, hasRequiredProperties }=require("../errors/validations");
+//Importing standard common validation functions
+const { hasValidProperties, hasRequiredProperties, idMachesUrlId }=require("../errors/validations");
 
 //checks for extra fields and raises an error along with the list of extra fields
 const bodyHasValidProperties=hasValidProperties(["name", "description", "price", "image_url", "id"]);
 
 //making sure all required fields are included in the body
 const bodyHasRequiredProperties = hasRequiredProperties(["name", "description", "price", "image_url"]);
+
+const bodyIdMachesUrlId= idMachesUrlId("dishId");
 
 
 const path = require("path");
@@ -25,43 +27,17 @@ function list(req, res) {
 function dishExists(req, res, next) {
   const { dishId } = req.params;
   const foundDish = dishes.find(({ id }) => id === dishId);
-  if (foundDish) {
-    res.locals.dish = foundDish;
-    next();
-  } else {
-    notFound(req, res, next);
+  if (!foundDish) {
+      return notFound(req, res, next);
   }
+  res.locals.dish = foundDish;
+  next();  
 }
 
 function read(req, res) {
   res.json({ data: res.locals.dish });
 }
 
-// function hasValidProperties(req,res,next){
-//   const validProperties = ["name", "description", "price", "image_url", "id"];
-//   const { data }=req.body;
-//   const invalidFields=Object.keys(data).filter(field=>!validProperties.includes(field));
-//   if (invalidFields.length>0){
-//     return next({
-//       status:400,
-//       message: `Invalid field(s) : ${invalidFields.join(", ")}`,
-//     });
-//   }
-//   next();
-// }
-
-// function hasRequiredProperties(req,res,next){
-//   const requiredProperties = ["name", "description", "price", "image_url"];
-//   const { data }=req.body;
-//   requiredProperties.forEach((property)=>{
-//     if (!data[property]){
-//       return next({
-//         status:400,
-//         message: `Dish must include a ${property}. it is required`,
-//       });    }
-//   });
-//   next();
-// }
 function hasValidValues(req,res,next){
   const { name, description, price, image_url }=req.body.data;
   if (name.trim()===""){
@@ -88,7 +64,6 @@ function hasValidValues(req,res,next){
       message: `Dish must have a price that is an integer greater than 0`,
     });
   }
-  
   next();
 }
 
@@ -97,20 +72,6 @@ function create(req, res) {
     data["id"]=nextId();
     dishes.push(data);
     res.status(201).json({data});
-}
-
-function bodyIdMachesUrlId(req,res,next){
-  const { data:{id} }= req.body;
-  const { dishId }= req.params;
-  
-  //if the body includes id field then it checkes if it maches the dishId obtaind from url
-  if (id && id!==dishId ){
-      return next({
-          status:400,
-          message:`Dish id does not match route id. Dish: ${id}, Route: ${dishId}`
-      });
-  }
-  next();
 }
 
 function update(req,res){
@@ -122,27 +83,11 @@ function update(req,res){
     res.json({data:foundDish});
 }
 
-function destroy(req,res,next){
-  const { dishId }=req.params;
-  const foundDish=dishes.find(({id})=>id===dishes);
-  if (foundDish){
-      //const foundDish=res.locals.dish;
-    const index=dishes.findIndex(({id})=>id===foundDish.id);
-    dishes.splice(index,1);
-  }else{
-    return next({
-      status:405,
-      message:"delete is not completed"
-    });
-  }
-  res.sendStatus(405);
-}
 
 module.exports = {
   create:[bodyHasValidProperties, bodyHasRequiredProperties, hasValidValues, create],  
   read: [dishExists, read],
   update:[dishExists, bodyHasValidProperties, bodyHasRequiredProperties, hasValidValues, bodyIdMachesUrlId, update],
-  delete:[ destroy],
   list,
   dishExists,
   bodyIdMachesUrlId,

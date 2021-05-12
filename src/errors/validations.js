@@ -13,6 +13,7 @@ function hasValidProperties(validProperties) {
     next();
   };
 }
+
 function hasRequiredProperties(requiredProperties, dataObject = undefined) {
   return (req, res, next) => {
     const data = dataObject || req.body.data;
@@ -28,16 +29,15 @@ function hasRequiredProperties(requiredProperties, dataObject = undefined) {
   };
 }
 
-function bodyIdMachesUrlId(urlId) {
+function idMachesUrlId(paramName) {
   return (req, res, next) => {
     const { data: { id } } = req.body;
-    const { dishId } = req.params;
-
+    const urlId=req.params[paramName];
     //if the body includes id field then it checkes if it maches the dishId obtaind from url
-    if (id && id !== dishId) {
+    if (id && id !== urlId) {
       return next({
         status: 400,
-        message: `Dish id does not match route id. Dish: ${id}, Route: ${dishId}`,
+        message: `Field id: ${id}, does not match route id: ${urlId}.`,
       });
     }
     next();
@@ -47,5 +47,5 @@ function bodyIdMachesUrlId(urlId) {
 module.exports = {
   hasValidProperties,
   hasRequiredProperties,
-  bodyIdMachesUrlId,
+  idMachesUrlId,
 };

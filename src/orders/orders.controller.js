@@ -1,11 +1,13 @@
-//Importing standard validation functions
-const { hasValidProperties, hasRequiredProperties }=require("../errors/validations");
+//Importing standard common validation functions
+const { hasValidProperties, hasRequiredProperties, idMachesUrlId }=require("../errors/validations");
 
 //checks for extra fields and raises an error if there is any and shows the list of extra fields
 const bodyHasValidProperties=hasValidProperties(["id", "deliverTo", "mobileNumber", "status", "dishes"]);
 
 //making sure all required fields are included in the body
 const bodyHasRequiredProperties = hasRequiredProperties(["deliverTo", "mobileNumber", "dishes"]);
+
+const bodyIdMachesUrlId= idMachesUrlId("orderId");
 
 
 const path = require("path");
@@ -19,7 +21,6 @@ const nextId = require("../utils/nextId");
 function list(req, res) {
   res.json({ data: orders });
 }
-
 
 function hasValidDishes(req, res, next) {
   const { dishes } = req.body.data;
@@ -45,9 +46,7 @@ function hasValidDishes(req, res, next) {
     next();
 }
 
-
 function create(req,res){
-    //const { data:{deliverTo,mobileNumber,quantity,dishes} } = req.body;
     const {data}=req.body;
     data["id"]=nextId();
     orders.push(data);
@@ -65,6 +64,7 @@ function orderExists(req,res,next){
         notFound(req,res,next);
     }
 }
+
 function read(req,res){
     const foundOrder=res.locals.order;
     res.json({data:foundOrder});
@@ -88,19 +88,6 @@ function hasValidStatus(req,res,next){
     next();
 }
 
-function hasValidValues(req,res,next){
-    const { data:{id,status} }= req.body;
-    const { orderId }= req.params;
-    
-    if (id && id!==orderId ){
-        return next({
-            status:400,
-            message:`Order id does not match route id. Order: ${id}, Route: ${orderId}`
-        });
-    } 
-    next();
-}
-
 function update(req,res){
     const { data }=req.body;
     const { orderId }=req.params;
@@ -111,8 +98,7 @@ function update(req,res){
     res.json({data});
 }
 
-function destroy(req,res,next){
-    const { orderId }=req.params;
+function isStatusPending(req,res,next){
     const foundOrder=res.locals.order;
     if (foundOrder.status!== "pending"){
         return next({
@@ -120,21 +106,20 @@ function destroy(req,res,next){
             message:"An order cannot be deleted unless it is pending"
         });
     }
-    const index=orders.findIndex(({id})=>id===orderId);
-    orders.splice(index,1);
-    res.sendStatus(204);
+    next();
 }
 
-function logMe(req,res,next){
-    console.log("extraValidation");
-    next();
+function destroy(req,res,next){
+    const index=orders.findIndex(({id})=>id===res.locals.order.id);
+    orders.splice(index,1);
+    res.sendStatus(204);
 }
 
 module.exports = {
     create:[bodyHasValidProperties, bodyHasRequiredProperties, hasValidDishes, create],
     read:[orderExists, read],
-    update:[ orderExists, bodyHasValidProperties, bodyHasRequiredProperties, hasValidStatus, hasValidDishes, hasValidValues , update],
-    delete:[orderExists , destroy],
+    update:[ orderExists, bodyHasValidProperties, bodyHasRequiredProperties, hasValidStatus, hasValidDishes, bodyIdMachesUrlId , update],
+    delete:[orderExists, isStatusPending, destroy],
     list,
     orderExists,
 }
